@@ -43,7 +43,7 @@ export default function Login() {
       return;
     }
 
-    router.push('/');
+    router.push('/feed');
   }
 
   return (
