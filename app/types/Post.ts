@@ -25,7 +25,7 @@ export interface PostDoc {
   authorName: string;
   authorImage: string | null;
   text: string;
-  image: string | null;
+  images: { url: string; publicId: string }[];
   privacy: 'public' | 'private';
   likes: string[];
   comments: Comment[];

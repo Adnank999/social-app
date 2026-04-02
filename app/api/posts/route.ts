@@ -22,19 +22,37 @@ export async function GET(request: NextRequest) {
     .toArray();
 
   const serialized = posts.map((p) => ({
-    ...p,
     _id: p._id.toString(),
+    authorId: p.authorId,
+    authorName: p.authorName,
+    authorImage: p.authorImage ?? null,
+    text: p.text,
+    images: Array.isArray(p.images)
+      ? p.images
+      : p.image
+        ? [{ url: p.image as string, publicId: '' }]
+        : [],
+    privacy: p.privacy,
+    likes: p.likes ?? [],
     createdAt: (p.createdAt as Date).toISOString(),
     updatedAt: (p.updatedAt as Date).toISOString(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     comments: (p.comments ?? []).map((c: any) => ({
-      ...c,
       _id: c._id.toString(),
+      authorId: c.authorId,
+      authorName: c.authorName,
+      authorImage: c.authorImage ?? null,
+      text: c.text,
+      likes: c.likes ?? [],
       createdAt: (c.createdAt as Date).toISOString(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       replies: (c.replies ?? []).map((r: any) => ({
-        ...r,
         _id: r._id.toString(),
+        authorId: r.authorId,
+        authorName: r.authorName,
+        authorImage: r.authorImage ?? null,
+        text: r.text,
+        likes: r.likes ?? [],
         createdAt: (r.createdAt as Date).toISOString(),
       })),
     })),

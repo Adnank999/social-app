@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { auth } from '@/app/lib/auth';
 import { getDb } from '@/app/lib/db';
+import { pusherServer } from '@/app/lib/pusher';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -31,9 +32,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   };
 
   const db = await getDb();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = await db.collection('posts').findOneAndUpdate(
     { _id: new ObjectId(id) },
-    { $push: { comments: comment }, $set: { updatedAt: new Date() } },
+    { $push: { comments: comment as any }, $set: { updatedAt: new Date() } } as any,
     { returnDocument: 'after' },
   );
 
@@ -53,6 +56,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       createdAt: (r.createdAt as Date).toISOString(),
     })),
   }));
+
+  // Notify post author (not when commenting on own post)
+  if (result.authorId !== session.user.id) {
+    const notification = {
+      _id: new ObjectId(),
+      recipientId: result.authorId as string,
+      actorId: session.user.id,
+      actorName: session.user.name,
+      actorImage: session.user.image ?? null,
+      type: 'comment' as const,
+      postId: id,
+      postText: (result.text as string)?.slice(0, 60) ?? '',
+      commentText: text.trim().slice(0, 60),
+      read: false,
+      createdAt: new Date(),
+    };
+
+    await db.collection('notifications').insertOne(notification);
+
+    await pusherServer.trigger(`user-${result.authorId}`, 'notification', {
+      ...notification,
+      _id: notification._id.toString(),
+      createdAt: notification.createdAt.toISOString(),
+    });
+  }
 
   return Response.json({ comments: serializedComments }, { status: 201 });
 }

@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/app/lib/auth';
-import { getDb } from '@/app/lib/db';
-import type { PostDoc } from '@/app/lib/models/post';
+import type { PostDoc } from '@/app/types/Post';
 import Navbar from './partials/Navbar';
 import MobileNav from './partials/MobileNav';
 import LeftSidebar from './partials/LeftSidebar';
@@ -19,58 +17,18 @@ export const metadata: Metadata = {
 };
 
 export default async function FeedPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) redirect('/auth/login');
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
 
-  const db = await getDb();
-  const rawPosts = await db
-    .collection('posts')
-    .find({
-      $or: [
-        { privacy: 'public' },
-        { authorId: session.user.id, privacy: 'private' },
-      ],
-    })
-    .sort({ createdAt: -1 })
-    .toArray();
-
-  const posts: PostDoc[] = rawPosts.map((p) => ({
-    _id: p._id.toString(),
-    authorId: p.authorId,
-    authorName: p.authorName,
-    authorImage: p.authorImage ?? null,
-    text: p.text,
-    image: p.image ?? null,
-    privacy: p.privacy,
-    likes: p.likes ?? [],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    comments: (p.comments ?? []).map((c: any) => ({
-      _id: c._id.toString(),
-      authorId: c.authorId,
-      authorName: c.authorName,
-      authorImage: c.authorImage ?? null,
-      text: c.text,
-      likes: c.likes ?? [],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      replies: (c.replies ?? []).map((r: any) => ({
-        _id: r._id.toString(),
-        authorId: r.authorId,
-        authorName: r.authorName,
-        authorImage: r.authorImage ?? null,
-        text: r.text,
-        likes: r.likes ?? [],
-        createdAt: (r.createdAt as Date).toISOString(),
-      })),
-      createdAt: (c.createdAt as Date).toISOString(),
-    })),
-    createdAt: (p.createdAt as Date).toISOString(),
-    updatedAt: (p.updatedAt as Date).toISOString(),
-  }));
+  const res = await fetch(`${process.env.BASE_URL}/api/posts`, {
+    headers: { cookie: headersList.get('cookie') ?? '' },
+  });
+  const posts: PostDoc[] = await res.json();
 
   const currentUser = {
-    id: session.user.id,
-    name: session.user.name,
-    image: session.user.image ?? null,
+    id: session!.user.id,
+    name: session!.user.name,
+    image: session!.user.image ?? null,
   };
 
   return (
