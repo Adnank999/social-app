@@ -100,7 +100,7 @@ export default function Navbar() {
               </Link>
             </li>
 
-            {user && <Notifications userId={user.id} />}
+            <Notifications userId={user?.id ?? null} />
 
             <li className="nav-item _header_nav_item">
               <Link className="nav-link _header_nav_link" aria-current="page" href="/chat">

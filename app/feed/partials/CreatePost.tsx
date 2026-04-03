@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { createPost } from '@/app/actions/posts';
 
 interface CurrentUser {
   id: string;
@@ -16,7 +16,6 @@ interface SelectedImage {
 }
 
 export default function CreatePost({ currentUser }: { currentUser: CurrentUser }) {
-  const router = useRouter();
   const [text, setText] = useState('');
   const [privacy, setPrivacy] = useState<'public' | 'private'>('public');
   const [images, setImages] = useState<SelectedImage[]>([]);
@@ -45,7 +44,7 @@ export default function CreatePost({ currentUser }: { currentUser: CurrentUser }
     });
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
     if (!text.trim()) return;
 
@@ -74,21 +73,12 @@ export default function CreatePost({ currentUser }: { currentUser: CurrentUser }
         uploadedImages = uploadData.images;
       }
 
-      await fetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          privacy,
-          images: uploadedImages,
-        }),
-      });
+      await createPost({ text, privacy, images: uploadedImages });
 
       images.forEach((img) => URL.revokeObjectURL(img.preview));
       setText('');
       setImages([]);
       setPrivacy('public');
-      router.refresh();
     } finally {
       setSubmitting(false);
     }

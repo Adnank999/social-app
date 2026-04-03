@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Pusher from 'pusher-js';
+import { getNotifications, markNotificationsRead } from '@/app/actions/notifications';
 
 export interface Notification {
   _id: string;
@@ -33,7 +34,7 @@ function notificationText(n: Notification): string {
 }
 
 interface Props {
-  userId: string;
+  userId: string | null;
 }
 
 export default function Notifications({ userId }: Props) {
@@ -45,14 +46,14 @@ export default function Notifications({ userId }: Props) {
 
   // Fetch existing notifications on mount
   useEffect(() => {
-    fetch('/api/notifications')
-      .then((r) => r.json())
-      .then((data: Notification[]) => setNotifications(data))
-      .catch(() => {});
-  }, []);
+    if (!userId) return;
+    getNotifications().then(setNotifications).catch(() => {});
+  }, [userId]);
 
   // Subscribe to Pusher for real-time new notifications
   useEffect(() => {
+    if (!userId) return;
+
     const client = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
     });
@@ -86,11 +87,7 @@ export default function Notifications({ userId }: Props) {
     // Mark all unread as read
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n._id);
     if (unreadIds.length > 0) {
-      fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: unreadIds }),
-      }).catch(() => {});
+      markNotificationsRead(unreadIds).catch(() => {});
 
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     }

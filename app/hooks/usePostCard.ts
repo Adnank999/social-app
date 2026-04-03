@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import type { Comment } from '@/app/lib/models/post';
+
+import { likePost, likeComment, likeReply } from '@/app/actions/likes';
+import { addComment, addReply } from '@/app/actions/comments';
+import { Comment } from '../types/Post';
 
 export function usePostCard(
   postId: string,
@@ -33,7 +36,7 @@ export function usePostCard(
         : [...prev, currentUserId],
     );
     try {
-      await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
+      await likePost(postId);
     } catch {
       setLikes((prev) =>
         prev.includes(currentUserId)
@@ -45,19 +48,14 @@ export function usePostCard(
     }
   }
 
-  async function handleComment(e: React.FormEvent) {
+  async function handleComment(e: React.SyntheticEvent) {
     e.preventDefault();
     if (!commentText.trim() || commentLoading) return;
     setCommentLoading(true);
     try {
-      const res = await fetch(`/api/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: commentText.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setComments(data.comments);
+      const result = await addComment(postId, commentText.trim());
+      if (result.comments) {
+        setComments(result.comments);
         setCommentText('');
         setShowComments(true);
       }
@@ -81,7 +79,7 @@ export function usePostCard(
       ),
     );
     try {
-      await fetch(`/api/posts/${postId}/comments/${commentId}/like`, { method: 'POST' });
+      await likeComment(postId, commentId);
     } catch {
       setComments((prev) =>
         prev.map((c) =>
@@ -103,14 +101,9 @@ export function usePostCard(
     if (!text || replyLoading[commentId]) return;
     setReplyLoading((prev) => ({ ...prev, [commentId]: true }));
     try {
-      const res = await fetch(`/api/posts/${postId}/comments/${commentId}/replies`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setComments(data.comments);
+      const result = await addReply(postId, commentId, text);
+      if (result.comments) {
+        setComments(result.comments);
         setReplyTextMap((prev) => ({ ...prev, [commentId]: '' }));
         setShowReplyInput((prev) => ({ ...prev, [commentId]: false }));
       }
@@ -141,9 +134,7 @@ export function usePostCard(
       ),
     );
     try {
-      await fetch(`/api/posts/${postId}/comments/${commentId}/replies/${replyId}/like`, {
-        method: 'POST',
-      });
+      await likeReply(postId, commentId, replyId);
     } catch {
       setComments((prev) =>
         prev.map((c) =>
