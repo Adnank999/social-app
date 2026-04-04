@@ -1,9 +1,6 @@
 import cloudinary from '@/app/lib/cloudinary';
 import { NextResponse } from 'next/server';
 
-
-export const runtime = 'nodejs';
-
 function bufferToDataUri(file: File, buffer: Buffer) {
   return `data:${file.type};base64,${buffer.toString('base64')}`;
 }

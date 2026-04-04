@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import type { Reply } from "@/app/lib/models/post";
+
 import { timeAgo } from "../../../utils/utils";
+import { Reply } from "@/app/types/Post";
 
 interface Props {
   reply: Reply;
