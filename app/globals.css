@@ -1,3 +1,30 @@
 @import "tailwindcss/utilities";
 @import "tailwindcss/theme";
 
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-18px); }
+}
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-24px); }
+}
+@keyframes shimmer-slide {
+  from { background-position: -200% center; }
+  to { background-position: 200% center; }
+}
+
+.animate-float      { animation: float 6s ease-in-out infinite; }
+.animate-float-d    { animation: float-delayed 7s ease-in-out 1.5s infinite; }
+.animate-float-slow { animation: float-slow 9s ease-in-out 0.8s infinite; }
+.gradient-text {
+  background: linear-gradient(135deg, #a78bfa, #818cf8, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
