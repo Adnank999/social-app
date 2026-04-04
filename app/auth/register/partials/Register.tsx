@@ -50,7 +50,7 @@ export default function Register() {
       return;
     }
 
-    router.push('auth/login');
+    router.push('/feed');
   }
 
   return (
