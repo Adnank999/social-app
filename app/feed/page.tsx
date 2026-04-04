@@ -8,6 +8,7 @@ import PostFeed from './partials/PostFeed';
 import FeedRealtime from './partials/FeedRealtime';
 import RightSidebar from './partials/RightSidebar';
 import DarkModeToggle from '../components/DarkModeToggle';
+import PostFeedSkeleton from '../components/PostFeedSkeleton';
 
 export const metadata: Metadata = {
   title: 'Feed — Buddy Script',
@@ -34,7 +35,7 @@ export default function FeedPage() {
                   <div className="_layout_middle_inner">
                     <Stories />
                     <FeedRealtime />
-                    <Suspense fallback={<div style={{ padding: '24px', textAlign: 'center', color: '#8a8a8a' }}>Loading posts...</div>}>
+                    <Suspense fallback={<PostFeedSkeleton />}>
                       <PostFeed />
                     </Suspense>
                   </div>

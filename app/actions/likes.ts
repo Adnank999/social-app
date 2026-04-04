@@ -1,18 +1,14 @@
 'use server';
 
-import { auth } from '@/app/lib/auth';
-import { getDb } from '@/app/lib/db';
-import { pusherServer } from '@/app/lib/pusher';
-import { ObjectId } from 'mongodb';
-import { headers } from 'next/headers';
 
-async function getSession() {
-  const headersList = await headers();
-  return auth.api.getSession({ headers: headersList });
-}
+import { getDb } from '@/app/lib/db';
+import { createNotification } from '@/app/actions/notifications';
+import { ObjectId } from 'mongodb';
+import { getSession } from '../utils/user-session';
+
 
 export async function likePost(postId: string): Promise<{ error?: string }> {
-  const session = await getSession();
+   const session = await getSession();
   if (!session?.user) return { error: 'Unauthorized' };
   if (!ObjectId.isValid(postId)) return { error: 'Invalid post id' };
 
@@ -35,26 +31,15 @@ export async function likePost(postId: string): Promise<{ error?: string }> {
       { $addToSet: { likes: userId }, $set: { updatedAt: new Date() } },
     );
 
-    if (post.authorId !== userId) {
-      const notification = {
-        _id: new ObjectId(),
-        recipientId: post.authorId as string,
-        actorId: userId,
-        actorName: session.user.name,
-        actorImage: session.user.image ?? null,
-        type: 'like' as const,
-        postId,
-        postText: (post.text as string)?.slice(0, 60) ?? '',
-        read: false,
-        createdAt: new Date(),
-      };
-      await db.collection('notifications').insertOne(notification);
-      await pusherServer.trigger(`user-${post.authorId}`, 'notification', {
-        ...notification,
-        _id: notification._id.toString(),
-        createdAt: notification.createdAt.toISOString(),
-      });
-    }
+    await createNotification({
+      recipientId: post.authorId as string,
+      actorId: userId,
+      actorName: session.user.name,
+      actorImage: session.user.image ?? null,
+      type: 'like',
+      postId,
+      postText: (post.text as string)?.slice(0, 60) ?? '',
+    });
   }
 
   return {};
@@ -83,9 +68,23 @@ export async function likeComment(
   await collection.updateOne(
     { _id: new ObjectId(postId), 'comments._id': new ObjectId(commentId) },
     hasLiked
-      ? { $pull: { 'comments.$.likes': userId }, $set: { updatedAt: new Date() } }
-      : { $addToSet: { 'comments.$.likes': userId }, $set: { updatedAt: new Date() } },
+      ? { $pull: { 'comments.$.likes': userId as unknown as never }, $set: { updatedAt: new Date() } }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      : { $addToSet: { 'comments.$.likes': userId }, $set: { updatedAt: new Date() } } as any,
   );
+
+  if (!hasLiked) {
+    await createNotification({
+      recipientId: comment.authorId as string,
+      actorId: userId,
+      actorName: session.user.name,
+      actorImage: session.user.image ?? null,
+      type: 'comment_like',
+      postId,
+      postText: (post.text as string)?.slice(0, 60) ?? '',
+      commentText: (comment.text as string)?.slice(0, 60) ?? '',
+    });
+  }
 
   return {};
 }
@@ -115,7 +114,8 @@ export async function likeReply(
 
   const hasLiked = (reply.likes ?? []).includes(userId);
 
-  await collection.updateOne(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (collection.updateOne as any)(
     { _id: new ObjectId(postId) },
     hasLiked
       ? { $pull: { 'comments.$[c].replies.$[r].likes': userId }, $set: { updatedAt: new Date() } }
@@ -127,6 +127,19 @@ export async function likeReply(
       ],
     },
   );
+
+  if (!hasLiked) {
+    await createNotification({
+      recipientId: reply.authorId as string,
+      actorId: userId,
+      actorName: session.user.name,
+      actorImage: session.user.image ?? null,
+      type: 'comment_like',
+      postId,
+      postText: (post.text as string)?.slice(0, 60) ?? '',
+      commentText: (reply.text as string)?.slice(0, 60) ?? '',
+    });
+  }
 
   return {};
 }

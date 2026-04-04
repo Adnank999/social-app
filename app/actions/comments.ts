@@ -1,16 +1,14 @@
 'use server';
 
-import { auth } from '@/app/lib/auth';
+
 import { getDb } from '@/app/lib/db';
-import { pusherServer } from '@/app/lib/pusher';
+import { createNotification } from '@/app/actions/notifications';
 import type { Comment } from '@/app/types/Post';
 import { ObjectId } from 'mongodb';
 import { headers } from 'next/headers';
+import { getSession } from '../utils/user-session';
 
-async function getSession() {
-  const headersList = await headers();
-  return auth.api.getSession({ headers: headersList });
-}
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeComments(comments: any[]): Comment[] {
@@ -57,27 +55,16 @@ export async function addComment(
 
   if (!result) return { error: 'Post not found' };
 
-  if (result.authorId !== session.user.id) {
-    const notification = {
-      _id: new ObjectId(),
-      recipientId: result.authorId as string,
-      actorId: session.user.id,
-      actorName: session.user.name,
-      actorImage: session.user.image ?? null,
-      type: 'comment' as const,
-      postId,
-      postText: (result.text as string)?.slice(0, 60) ?? '',
-      commentText: text.trim().slice(0, 60),
-      read: false,
-      createdAt: new Date(),
-    };
-    await db.collection('notifications').insertOne(notification);
-    await pusherServer.trigger(`user-${result.authorId}`, 'notification', {
-      ...notification,
-      _id: notification._id.toString(),
-      createdAt: notification.createdAt.toISOString(),
-    });
-  }
+  await createNotification({
+    recipientId: result.authorId as string,
+    actorId: session.user.id,
+    actorName: session.user.name,
+    actorImage: session.user.image ?? null,
+    type: 'comment',
+    postId,
+    postText: (result.text as string)?.slice(0, 60) ?? '',
+    commentText: text.trim().slice(0, 60),
+  });
 
   return { comments: serializeComments(result.comments ?? []) };
 }
@@ -103,13 +90,31 @@ export async function addReply(
   };
 
   const db = await getDb();
+  const post = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
+  if (!post) return { error: 'Post or comment not found' };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const comment = (post.comments ?? []).find((c: any) => c._id.toString() === commentId);
+  if (!comment) return { error: 'Post or comment not found' };
+
   const result = await db.collection('posts').findOneAndUpdate(
     { _id: new ObjectId(postId), 'comments._id': new ObjectId(commentId) },
-    { $push: { 'comments.$.replies': reply }, $set: { updatedAt: new Date() } },
+    { $push: { 'comments.$.replies': reply as any }, $set: { updatedAt: new Date() } } as any,
     { returnDocument: 'after' },
   );
 
   if (!result) return { error: 'Post or comment not found' };
+
+  await createNotification({
+    recipientId: comment.authorId as string,
+    actorId: session.user.id,
+    actorName: session.user.name,
+    actorImage: session.user.image ?? null,
+    type: 'reply',
+    postId,
+    postText: (post.text as string)?.slice(0, 60) ?? '',
+    commentText: text.trim().slice(0, 60),
+  });
 
   return { comments: serializeComments(result.comments ?? []) };
 }

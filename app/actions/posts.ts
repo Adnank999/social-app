@@ -7,14 +7,15 @@ import { headers } from 'next/headers';
 import { ObjectId } from 'mongodb';
 import { refresh } from 'next/cache';
 import { pusherServer } from '@/app/lib/pusher';
+import { getSession } from '../utils/user-session';
 
 export async function createPost(payload: {
   text: string;
   images: { url: string; publicId: string }[];
   privacy: 'public' | 'private';
 }): Promise<{ error?: string }> {
-  const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList });
+
+  const session = await getSession();
 
   if (!session?.user) return { error: 'Unauthorized' };
   if (!payload.text?.trim()) return { error: 'Text is required' };

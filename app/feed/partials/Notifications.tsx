@@ -9,7 +9,7 @@ export interface Notification {
   _id: string;
   actorName: string;
   actorImage: string | null;
-  type: 'like' | 'comment';
+  type: 'like' | 'comment' | 'comment_like' | 'reply';
   postText: string;
   commentText?: string;
   read: boolean;
@@ -29,6 +29,12 @@ function timeAgo(dateStr: string): string {
 function notificationText(n: Notification): string {
   if (n.type === 'like') {
     return `${n.actorName} liked your post${n.postText ? `: "${n.postText}"` : ''}`;
+  }
+  if (n.type === 'comment_like') {
+    return `${n.actorName} liked your comment${n.commentText ? `: "${n.commentText}"` : ''}`;
+  }
+  if (n.type === 'reply') {
+    return `${n.actorName} replied to your comment${n.commentText ? `: "${n.commentText}"` : ''}`;
   }
   return `${n.actorName} commented on your post${n.commentText ? `: "${n.commentText}"` : ''}`;
 }

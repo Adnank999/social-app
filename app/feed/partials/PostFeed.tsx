@@ -1,14 +1,12 @@
-import { headers } from 'next/headers';
-import { auth } from '@/app/lib/auth';
 import { getPosts } from '@/app/actions/posts';
 import CreatePost from './CreatePost';
 import PostCard from './PostCard';
+import { getSession } from '@/app/utils/user-session';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PostFeed() {
-  const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList });
+  const session = await getSession();
 
   const posts = await getPosts();
 
