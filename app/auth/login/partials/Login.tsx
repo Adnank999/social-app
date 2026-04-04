@@ -44,6 +44,7 @@ export default function Login() {
     }
 
     router.push('/feed');
+    router.refresh();
   }
 
   return (
